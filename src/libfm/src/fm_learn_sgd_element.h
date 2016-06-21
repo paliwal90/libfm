@@ -39,7 +39,8 @@ class fm_learn_sgd_element: public fm_learn_sgd {
 		virtual void learn(Data& train, Data& test, Data& validation) {
 			fm_learn_sgd::learn(train, test, validation);
 			int final_num_iter = 0;
-			std::vector<double> scores;
+			std::deque<double> scores;
+			std::deque<fm_state*> states;
 			std::cout << "SGD: DON'T FORGET TO SHUFFLE THE ROWS IN TRAINING DATA TO GET THE BEST RESULTS." << std::endl; 
 			// SGD
 			for (int i = 0; i < num_iter; i++) {
@@ -55,13 +56,19 @@ class fm_learn_sgd_element: public fm_learn_sgd {
 				double logloss_train = evaluate(train);
 				double logloss_test = evaluate(test);
 				double logloss_validation = evaluate(validation);
-				scores.push_back(logloss_validation);
 				final_num_iter++;
 
 				bool isStop = true;
 				if (early_stop) {
-					if (scores.size() < num_stop + 2) {
-						scores.push_back(logloss_validation);	
+				  fm_state *current = new fm_state();
+          current->w0 = this->fm->w0;
+          current->w = this->fm->w;
+          current->v = this->fm->v;
+          current->num_factor = this->fm->num_factor;
+          current->num_attribute = this->fm->num_attribute;
+				  scores.push_back(logloss_validation);
+				  states.push_back(current);
+					if (scores.size() < (unsigned int) num_stop + 2) {
 						isStop = false;
 					} else {
 						for (uint j = scores.size() - num_stop; j < scores.size(); j++) {
@@ -69,11 +76,17 @@ class fm_learn_sgd_element: public fm_learn_sgd {
 								isStop = false;
 							}
 						}
+						scores.pop_front();
+					  states.pop_front();
 					}
 				}
 				std::cout << "#Iter=" << std::setw(3) << i << "\tTrain=" << logloss_train << "\tTest=" << logloss_test << "\tValidation=" << logloss_validation << std::endl;
 				if (early_stop && isStop) {
-					std::cout << "Early Stopping Activated on #iter" << (i - num_stop) << " Final quality: " << logloss_validation << std::endl;
+				  double logloss_final = scores.at(0);
+				  this->fm->state = states.at(0);
+				  std::cout << "Copying best state" << std::endl;
+				  this->fm->apply_state();
+					std::cout << "Early Stopping Activated on #iter" << (i - num_stop) << " Final quality: " << logloss_final << std::endl;
 					break;
 				}
 			}

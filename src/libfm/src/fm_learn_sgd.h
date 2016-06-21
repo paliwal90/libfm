@@ -29,6 +29,8 @@
 
 #include "fm_learn.h"
 #include "../../fm_core/fm_sgd.h"
+#include "../../fm_core/fm_state.h"
+#include <deque>
 
 class fm_learn_sgd: public fm_learn {
 	protected:

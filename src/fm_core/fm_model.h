@@ -31,7 +31,7 @@
 #include "../util/fmatrix.h"
 
 #include "fm_data.h"
-
+#include "fm_state.h"
 
 class fm_model {
 	private:
@@ -40,7 +40,8 @@ class fm_model {
 		double w0;
 		DVectorDouble w;
 		DMatrixDouble v;
-
+    fm_state *state;
+		
 	public:
 		// the following values should be set:
 		uint num_attribute;
@@ -57,6 +58,7 @@ class fm_model {
 		fm_model();
 		void debug();
 		void init();
+		void apply_state();
 		double predict(sparse_row<FM_FLOAT>& x);
 		double predict(sparse_row<FM_FLOAT>& x, DVector<double> &sum, DVector<double> &sum_sqr);
 		void saveModel(std::string model_file_path);
@@ -64,8 +66,6 @@ class fm_model {
 		void splitString(const std::string& s, char c, std::vector<std::string>& v);
 	
 };
-
-
 
 fm_model::fm_model() {
 	num_factor = 0;
@@ -97,6 +97,12 @@ void fm_model::init() {
 	v.init(init_mean, init_stdev);
 	m_sum.setSize(num_factor);
 	m_sum_sqr.setSize(num_factor);
+}
+
+void fm_model::apply_state() {
+  w0 = state->w0;
+  w = state->w;
+  v = state->v;
 }
 
 double fm_model::predict(sparse_row<FM_FLOAT>& x) {
@@ -135,18 +141,18 @@ void fm_model::saveModel(std::string model_file_path){
 	out_model.open(model_file_path.c_str());
 	if (k0) {
 		out_model << "#global bias W0" << std::endl;
-		out_model << w0 << std::endl;
+		out_model << state->w0 << std::endl;
 	}
 	if (k1) {
 		out_model << "#unary interactions Wj" << std::endl;
 		for (uint i = 0; i<num_attribute; i++){
-			out_model <<	w(i) << std::endl;
+			out_model <<	state->w(i) << std::endl;
 		}
 	}
 	out_model << "#pairwise interactions Vj,f" << std::endl;
 	for (uint i = 0; i<num_attribute; i++){
 		for (int f = 0; f < num_factor; f++) {
-			out_model << v(f,i);
+			out_model << state->v(f,i);
 			if (f!=num_factor-1){ out_model << ' '; }
 		}
 		out_model << std::endl;
