@@ -100,7 +100,9 @@ void fm_model::init() {
 }
 
 void fm_model::apply_state() {
+  std::cout << w0 << std::endl;
   w0 = state->w0;
+  std::cout << w0 << std::endl;
   w = state->w;
   v = state->v;
 }
@@ -141,18 +143,18 @@ void fm_model::saveModel(std::string model_file_path){
 	out_model.open(model_file_path.c_str());
 	if (k0) {
 		out_model << "#global bias W0" << std::endl;
-		out_model << state->w0 << std::endl;
+		out_model << w0 << std::endl;
 	}
 	if (k1) {
 		out_model << "#unary interactions Wj" << std::endl;
 		for (uint i = 0; i<num_attribute; i++){
-			out_model <<	state->w(i) << std::endl;
+			out_model << w(i) << std::endl;
 		}
 	}
 	out_model << "#pairwise interactions Vj,f" << std::endl;
 	for (uint i = 0; i<num_attribute; i++){
 		for (int f = 0; f < num_factor; f++) {
-			out_model << state->v(f,i);
+			out_model << v(f,i);
 			if (f!=num_factor-1){ out_model << ' '; }
 		}
 		out_model << std::endl;
