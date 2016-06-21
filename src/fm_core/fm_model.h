@@ -100,9 +100,7 @@ void fm_model::init() {
 }
 
 void fm_model::apply_state() {
-  std::cout << w0 << std::endl;
   w0 = state->w0;
-  std::cout << w0 << std::endl;
   w = state->w;
   v = state->v;
 }
