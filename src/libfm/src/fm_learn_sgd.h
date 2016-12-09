@@ -41,13 +41,15 @@ class fm_learn_sgd: public fm_learn {
 		DVector<double> learn_rates;		
 		bool early_stop;
 		int num_stop;
-		
+		std::string optimize_metric;
+		std::string pred_out;
+		int pred_iter_step;
 		virtual void init() {		
 			fm_learn::init();	
 			learn_rates.setSize(3);
 		}		
 
-		virtual void learn(Data& train, Data& test, Data& validation) { 
+		virtual void learn(Data& train, Data& test, Data& validation ) {
 			fm_learn::learn(train, test, validation);
 			std::cout << "learnrate=" << learn_rate << std::endl;
 			std::cout << "learnrates=" << learn_rates(0) << "," << learn_rates(1) << "," << learn_rates(2) << std::endl;
@@ -58,6 +60,7 @@ class fm_learn_sgd: public fm_learn {
 			}
 			std::cout.flush();
 		}
+
 
 		void SGD(sparse_row<DATA_FLOAT> &x, const double multiplier, DVector<double> &sum) {
 			fm_SGD(fm, learn_rate, x, multiplier, sum); 

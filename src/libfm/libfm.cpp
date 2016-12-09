@@ -42,6 +42,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <iterator>
 #include <algorithm>
@@ -53,7 +54,7 @@
 #include "src/fm_learn.h"
 #include "src/fm_learn_sgd.h"
 #include "src/fm_learn_sgd_element.h"
-
+#include "src/fm_learn_sgd_element_adapt_reg.h"
 
 using namespace std;
 
@@ -77,6 +78,7 @@ int main(int argc, char **argv) {
 		const std::string param_test_file	= cmdline.registerParameter("test", "filename for test data [MANDATORY]");
 		const std::string param_val_file	= cmdline.registerParameter("validation", "filename for validation data [MANDATORY]");
 		const std::string param_out		= cmdline.registerParameter("out", "filename for output");
+		const std::string param_pred_iter_step	= cmdline.registerParameter("pred_iter_step", "to save prediction for each iteration step. Default null");
 
 		const std::string param_dim		= cmdline.registerParameter("dim", "'k0,k1,k2': k0=use bias, k1=use 1-way interactions, k2=dim of 2-way interactions; default=1,1,8");
 		const std::string param_regular		= cmdline.registerParameter("regular", "'r0,r1,r2' for SGD and ALS: r0=bias regularization, r1=1-way regularization, r2=2-way regularization");
@@ -102,6 +104,8 @@ int main(int argc, char **argv) {
 		const std::string param_early_stop  = cmdline.registerParameter("early_stop", "is early stopping enabled. Default: enabled.");
 		const std::string param_num_stop    = cmdline.registerParameter("num_stop", "number of rounds to check for early stop. Default: 10.");
 
+		const std::string param_optimize_metric  = cmdline.registerParameter("optimize_metric", "optimizing metric (allowed two: logloss, auc). Default: logloss.");
+
 		const std::string param_do_sampling	= "do_sampling";
 		const std::string param_do_multilevel	= "do_multilevel";
 		const std::string param_num_eval_cases  = "num_eval_cases";
@@ -117,15 +121,11 @@ int main(int argc, char **argv) {
 			return 0;
 		}
 
-		if (cmdline.getValue(param_method).compare("sgd") != 0) {
-			std::cout << "Wrong Optimization Method." << std::endl;
-			return 0;
-		}
+		//if (cmdline.getValue(param_method).compare("sgd") != 0) {
+		//	std::cout << "Wrong Optimization Method." << std::endl;
+		//	return 0;
+		//}
 
-		if (cmdline.hasParameter(param_load_model)) {
-			std::cout << "Model Loading is not supported" << std::endl;
-			return 0;
-		}
 		if (cmdline.getValue("task").compare("c") != 0) {
 			std::cout << "Supported only classification task" << std::endl;
 			return 0;
@@ -138,6 +138,10 @@ int main(int argc, char **argv) {
 		if (! cmdline.hasParameter(param_method)) { 
 			cmdline.setValue(param_method, "sgd");
 			std::cout << "No Optimization method was found in settings. Default: sgd." << std::endl;
+		}
+		if (! cmdline.hasParameter(param_optimize_metric)) {
+		  cmdline.setValue(param_optimize_metric, "logloss");
+		  std::cout << "No Optimization metric was found in settings. Default: logloss." << std::endl;
 		}
 		if (! cmdline.hasParameter(param_init_stdev)) { 
 			cmdline.setValue(param_init_stdev, "0.0003");
@@ -245,6 +249,8 @@ int main(int argc, char **argv) {
 		}
 		meta.num_relations = train.relation.dim;
 
+
+
 		// (2) Setup the factorization machine
 		fm_model fm;
 		{
@@ -261,10 +267,21 @@ int main(int argc, char **argv) {
 			fm.init();		
 			
 		}
-		
+
 		// (3) Setup the learning method:
-		fm_learn* fml = new fm_learn_sgd_element();
-		((fm_learn_sgd*)fml)->num_iter = cmdline.getValue(param_num_iter, 100);
+		fm_learn* fml;
+		if (! cmdline.getValue(param_method).compare("sgd")) {
+		  fml = new fm_learn_sgd_element();
+		  ((fm_learn_sgd*)fml)->num_iter = cmdline.getValue(param_num_iter, 100);
+
+		} else if (! cmdline.getValue(param_method).compare("sgda")) {
+		  fml = new fm_learn_sgd_element_adapt_reg();
+		  ((fm_learn_sgd*)fml)->num_iter = cmdline.getValue(param_num_iter, 100);
+
+		}else {
+		  throw "unknown method";
+		}
+		
 
 		fml->fm = &fm;
 		fml->max_target = train.max_target;
@@ -308,6 +325,7 @@ int main(int argc, char **argv) {
 	 	
 		fml->log = rlog;
 		fml->init();
+
 		// set the regularization; for standard SGD, groups are not supported
 		{
 			vector<double> reg = cmdline.getDblValues(param_regular);
@@ -344,6 +362,9 @@ int main(int argc, char **argv) {
 						fmlsgd->learn_rates(2) = lr[2];
 					}		
 					fmlsgd->early_stop = cmdline.getValue(param_early_stop, false);
+					fmlsgd->pred_out = cmdline.getValue(param_out);
+					fmlsgd->pred_iter_step = cmdline.getValue(param_pred_iter_step, 0);
+					fmlsgd->optimize_metric = cmdline.getValue(param_optimize_metric, "logloss");
 					fmlsgd->num_stop   = cmdline.getValue(param_num_stop, 10);
 			
 
@@ -359,6 +380,16 @@ int main(int argc, char **argv) {
 			fm.debug();			
 			fml->debug();			
 		}	
+
+		if (cmdline.hasParameter(param_load_model)) {
+		  std::cout << "Reading FM model... \t" << std::endl;
+		  if (cmdline.getValue(param_method).compare("sgd") || cmdline.getValue(param_method).compare("als")){ //load/save enabled only for SGD and ALS
+		    fm.loadModel(cmdline.getValue(param_load_model));
+		  }
+		}
+		else{
+		  std::cout << "WARNING: load/save enabled only for SGD and ALS. Nothing will be loaded." << std::endl;
+		}
 
 		// () learn		
 		fml->learn(train, test, validation);

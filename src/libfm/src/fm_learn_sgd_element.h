@@ -42,7 +42,8 @@ class fm_learn_sgd_element: public fm_learn_sgd {
 			std::deque<double> scores;
 			std::deque<fm_state*> states;
 			std::cout << "SGD: DON'T FORGET TO SHUFFLE THE ROWS IN TRAINING DATA TO GET THE BEST RESULTS." << std::endl; 
-			// SGD
+
+			int iter_step =  pred_iter_step;
 			for (int i = 0; i < num_iter; i++) {
 				double iteration_time = getusertime();
 				for (train.data->begin(); !train.data->end(); train.data->next()) {
@@ -53,41 +54,105 @@ class fm_learn_sgd_element: public fm_learn_sgd {
 				}
 
 				iteration_time = (getusertime() - iteration_time);
-				double logloss_train = evaluate(train);
-				double logloss_test = evaluate(test);
-				double logloss_validation = evaluate(validation);
+				double metric_train = evaluate(train,optimize_metric);
+				double metric_test = evaluate(test,optimize_metric);
+				double metric_validation = evaluate(validation,optimize_metric);
 				final_num_iter++;
 
 				bool isStop = true;
-				if (early_stop) {
-				  fm_state *current = new fm_state();
-          current->w0 = this->fm->w0;
-          current->w = this->fm->w;
-          current->v = this->fm->v;
-          current->num_factor = this->fm->num_factor;
-          current->num_attribute = this->fm->num_attribute;
-				  scores.push_back(logloss_validation);
-				  states.push_back(current);
-					if (scores.size() < (unsigned int) num_stop + 2) {
-						isStop = false;
-					} else {
-						for (uint j = scores.size() - num_stop; j < scores.size(); j++) {
-							if (scores.at(scores.size() - num_stop - 1) > scores.at(j)) {
-								isStop = false;
-							}
-						}
-						scores.pop_front();
-					  states.pop_front();
-					}
+
+				//former version of early stop begining
+// 				if (early_stop) {
+// 				  fm_state *current = new fm_state();
+//           current->w0 = this->fm->w0;
+//           current->w = this->fm->w;
+//           current->v = this->fm->v;
+//           current->num_factor = this->fm->num_factor;
+//           current->num_attribute = this->fm->num_attribute;
+// 				  scores.push_back(logloss_validation);
+// 				  states.push_back(current);
+// 					if (scores.size() < (unsigned int) num_stop + 2) {
+// 						isStop = false;
+// 					} else {
+// 						for (uint j = scores.size() - num_stop; j < scores.size(); j++) {
+// 							if (scores.at(scores.size() - num_stop - 1) > scores.at(j)) {
+// 								isStop = false;
+// 							}
+// 						}
+// 						scores.pop_front();
+// 					  states.pop_front();
+// 					}
+// 				}
+
+        //show original auc, gradient was used for minizing (1.0-auc), that is maximizing auc.
+        if (early_stop){
+          if(optimize_metric == "auc"){
+            std::cout << "#Iter=" << std::setw(3) << i << "\tTrain=" << (1.0-metric_train) << "\tTest=" << (1.0-metric_test) << "\tValidation=" << (1.0-metric_validation) << "\tLearnRate=" <<   fm_learn_sgd::learn_rate << std::endl;
+          }
+          else {
+            std::cout << "#Iter=" << std::setw(3) << i << "\tTrain=" << metric_train << "\tTest=" << metric_test << "\tValidation=" << metric_validation << "\tLearnRate=" <<   fm_learn_sgd::learn_rate << std::endl;
+          }
+        }
+
+        else {
+          std::cout << "#Iter=" << std::setw(3) << i << "\tTrain=" << metric_train << "\tTest=" << metric_test << "\tValidation=" << metric_validation << std::endl;
+        }
+
+        if (early_stop) {
+           fm_state *current = new fm_state();
+           current->w0 = this->fm->w0;
+           current->w = this->fm->w;
+           current->v = this->fm->v;
+           current->num_factor = this->fm->num_factor;
+           current->num_attribute = this->fm->num_attribute;
+           scores.push_back(metric_validation);
+           states.push_back(current);
+           if (scores.size() < (unsigned int) num_stop + 1) {
+             isStop = false;
+           } else {
+             for (uint j = scores.size() - num_stop; j < scores.size(); j++) {
+               if (scores.at(scores.size() - num_stop - 1) > scores.at(j)) {
+                 isStop = false;
+               }
+             }
+             scores.pop_front();
+             states.pop_front();
+           }
+         }
+
+
+				if(final_num_iter==iter_step && iter_step !=0){
+				  std::string pred_out_res;
+				  std::stringstream sstm;
+				  sstm << pred_out << iter_step;
+				  pred_out_res = sstm.str();
+				  DVector<double> pred;
+				  pred.setSize(test.num_cases);
+				  predict(test, pred);
+				  pred.save(pred_out_res);
+				  //std::cout << "writing prediction at iter = " << iter_step << std::endl;
+				  iter_step = pred_iter_step + iter_step;
 				}
-				std::cout << "#Iter=" << std::setw(3) << i << "\tTrain=" << logloss_train << "\tTest=" << logloss_test << "\tValidation=" << logloss_validation << std::endl;
-				if (early_stop && isStop) {
-				  double logloss_final = scores.at(0);
+
+				//uncomment to keep former version of early stop
+				// if (early_stop && isStop) {
+				//   double logloss_final = scores.at(0);
+				//   this->fm->state = states.at(0);
+				//   std::cout << "Copying best state" << std::endl;
+				//   this->fm->apply_state();
+				// 	std::cout << "Early Stopping Activated on #iter" << (i - num_stop) << " Final quality: " << logloss_final << std::endl;
+				// 	break;
+				// }
+
+				//this is using early stop not to stop, but to update learn_rate -> learn_rate/2
+				if (early_stop && isStop && ((fm_learn_sgd::learn_rate/2) >= 0.000001)) {
+
 				  this->fm->state = states.at(0);
-				  std::cout << "Copying best state" << std::endl;
 				  this->fm->apply_state();
-					std::cout << "Early Stopping Activated on #iter" << (i - num_stop) << " Final quality: " << logloss_final << std::endl;
-					break;
+				  fm_learn_sgd::learn_rate =  fm_learn_sgd::learn_rate/2;
+				  i= i - num_stop;
+				  scores.clear();
+				  states.clear();
 				}
 			}
 		}

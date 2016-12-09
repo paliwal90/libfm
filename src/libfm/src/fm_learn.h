@@ -23,6 +23,9 @@
 #define FM_LEARN_H_
 
 #include <cmath>
+#include <algorithm>
+#include <vector>
+#include <iostream>
 #include "Data.h"
 #include "../../fm_core/fm_model.h"
 #include "../../util/rlog.h"
@@ -66,9 +69,14 @@ class fm_learn {
 			pred_q_term.setSize(fm->num_factor, meta->num_relations + 1);
 		}
 
-		virtual double evaluate(Data& data) {
+		virtual double evaluate(Data& data, std::string& optimize_metric) {
 			assert(data.data != NULL);
-			return evaluate_logloss(data);
+		  if (optimize_metric == "auc") {
+		    return evaluate_auc(data);
+		  }
+		  else {
+		    return evaluate_logloss(data);
+		  }
 		}
 
 
@@ -84,6 +92,27 @@ class fm_learn {
 		}
 
 	protected:
+
+	  template<typename Vector>
+	  std::vector<double> rank(const Vector& v)
+	  {
+	    std::vector<std::size_t> w(v.size());
+	    std::iota(begin(w), end(w), 0);
+	    std::sort(begin(w), end(w), [&v](std::size_t i, std::size_t j) {return v[i] < v[j];});
+
+	    std::vector<double> r(w.size());
+	    for (std::size_t n, i = 0; i < w.size(); i += n)
+	    {
+	      n = 1;
+	      while (i + n < w.size() && v[w[i]] == v[w[i+n]]) ++n;
+	      for (std::size_t k = 0; k < n; ++k)
+	      {
+	        r[w[i+k]] = i + (n + 1) / 2.0;
+	      }
+	    }
+	    return r;
+	  }
+
 		virtual double evaluate_logloss(Data& data) {
 			double progressive_loss = 0.0;
 			for (data.data->begin(); !data.data->end(); data.data->next()) {
@@ -97,6 +126,31 @@ class fm_learn {
 			}
 			return -1 * progressive_loss / (double) data.data->getNumRows();
 		}
+
+	  virtual double evaluate_auc(Data& data) {
+	    std::vector<double> labels;
+	    std::vector<double> scores;
+	    for (data.data->begin(); !data.data->end(); data.data->next()) {
+	      double p = predict_case(data);
+	      p = 1.0/(1.0 + exp(-p));
+	      scores.push_back(p);
+	      labels.push_back(data.target(data.data->getRowIndex()));
+	    }
+	    std::vector<double> ranks = rank(scores);
+	    double n_pos=0.0; //n_pos, n_neg required to be double, to avoid C++ miscomputing large multiplication in AUC denominator (as in formula).
+	    double sum_pos_rank = 0.0;
+	    double auc;
+	    for (std::size_t i = 0; i < scores.size(); ++i){
+	      if(labels[i]>0){
+	        sum_pos_rank=sum_pos_rank+ranks[i];
+	        ++n_pos;
+	      }
+	    }
+	    double n_neg=scores.size()-n_pos;
+	    auc=((sum_pos_rank - n_pos*(n_pos+1)/2)/(n_pos*n_neg));
+	    return (1.0-auc);
+	  }
+
 };
 
 #endif /*FM_LEARN_H_*/
