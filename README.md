@@ -7,7 +7,9 @@ Changes:
 
 * Intermediate predictions saving at any desired iteration.
 
-* SGDA added
+* SGDA added.
+
+* Load model functionality added (useful for starting from previously saved model coefficients).
 
 * AUC evaluate per iteration. If early stop is used, validation auc can be maximised. Earlier validation log loss was minimized. Now have 2 options.
 
@@ -15,10 +17,12 @@ Changes:
 
 
 Additional parameters:
-* early stopping (bool) -- enabling early stopping
-* num iterations for early stopping (int) -- how many iterations till break
+
 * optimize_metric auc -- which metric to optimize on validation set by early stop (two allowed: logloss and auc, default: logloss). This option used only when early stop is used.
+
 * pred_iter_step -- set iteration step at which to save intermidiate predictions. E.g. if set to 10, then after every 10th iteration, predictions will be saved (output files will be generated with informative naming).
+
+* load_model -- saved_model_path
 
 
 Example
@@ -28,7 +32,7 @@ Example
 <path-to-libfm>/bin/libFM -task c -train <path-to-train-data> -test <path-to-test-data>
 -validation <path-to-validation-data> -dim '1,1,8' -early_stop 1 -num_stop 15 -optimize_metric auc 
 -pred_iter_step iter_step -out <where-predictions-to-save> -verbosity 0 -iter 40 
--method sgd  -learn_rate 0.001 -init_stdev 0.0003
+-method sgd  -learn_rate 0.001 -init_stdev 0.0003 -load_model saved_model_path
 ```
 
 
