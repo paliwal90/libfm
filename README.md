@@ -3,13 +3,13 @@ libFM with Updated Early Stopping and others
 
 Changes:
 
-* Extended early stop updates learning rate (divide by 2) after each early stop activation. However early stop is deactivated if learn rate reaches lower than 1e-6. From then, iterations continues with lastly updated learn rate.
+* Extended early stop updates learning rate (divide by 2) after each early stop activation. However early stop is deactivated if learn rate reaches lower than 1e-6. From then, iterations continue with lastly updated learn rate.
 
-* Intermediate predictions saving at any desired iteration.
+* Intermediate predictions to save at any desired iteration.
 
 * SGDA added.
 
-* Load model functionality added (useful for starting from previously saved model coefficients).
+* Load model functionality added (useful for starting from previously saved model coefficients, instead of randomely initializing parameters).
 
 * AUC evaluate per iteration. If early stop is used, validation auc can be maximised. Earlier validation log loss was minimized. Now have 2 options.
 
@@ -18,7 +18,7 @@ Changes:
 
 Additional parameters:
 
-* optimize_metric auc -- which metric to optimize on validation set by early stop (two allowed: logloss and auc, default: logloss). This option used only when early stop is used.
+* optimize_metric -- which metric to optimize on validation set by early stop (two allowed: logloss and auc, default: logloss). This option used only when early stop is used.
 
 * pred_iter_step -- set iteration step at which to save intermidiate predictions. E.g. if set to 10, then after every 10th iteration, predictions will be saved (output files will be generated with informative naming).
 
