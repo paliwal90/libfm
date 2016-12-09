@@ -31,8 +31,8 @@ Example
 ``` bash
 <path-to-libfm>/bin/libFM -task c -train <path-to-train-data> -test <path-to-test-data>
 -validation <path-to-validation-data> -dim '1,1,8' -early_stop 1 -num_stop 15 -optimize_metric auc 
--pred_iter_step iter_step -out <where-predictions-to-save> -verbosity 0 -iter 40 
--method sgd  -learn_rate 0.001 -init_stdev 0.0003 -load_model saved_model_path
+-pred_iter_step 10 -out <where-predictions-to-save> -verbosity 0 -iter 100
+-method sgd  -learn_rate 0.001 -init_stdev 0.0003 -load_model <saved-model-path>
 ```
 
 
