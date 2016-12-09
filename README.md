@@ -1,18 +1,24 @@
-libFM with Early Stopping
+libFM with Updated Early Stopping and others
 =========================
 
 Changes:
 
-* Removed mcmc and sgda optimization methods
-* Added validation data as mandatory parameter
-* Implemented early stopping of fm model
-* Validation data is MANDATORY for this verions
-* Removed handling of Meta 
-* Removed regression task
+* Extended early stop updates learning rate (divide by 2) after each early stop activation. However early stop is deactivated if learn rate reaches lower than 1e-6. From then, iterations continues with lastly updated learn rate.
+
+* Intermediate predictions saving at any desired iteration.
+
+* SGDA added
+
+* AUC evaluate per iteration. If early stop is used, validation auc can be maximised. Earlier validation log loss was minimized. Now have 2 options.
+
+* Makefile in src is updated (std c++) to support lambda expressions in ranking function for auc computation.
+
 
 Additional parameters:
 * early stopping (bool) -- enabling early stopping
 * num iterations for early stopping (int) -- how many iterations till break
+* optimize_metric auc -- which metric to optimize on validation set by early stop (two allowed: logloss and auc, default: logloss). This option used only when early stop is used.
+* pred_iter_step -- set iteration step at which to save intermidiate predictions. E.g. if set to 10, then after every 10th iteration, predictions will be saved (output files will be generated with informative naming).
 
 
 Example
@@ -20,9 +26,9 @@ Example
 
 ``` bash
 <path-to-libfm>/bin/libFM -task c -train <path-to-train-data> -test <path-to-test-data>
--validation <path-to-validation-data> -dim '1,1,8' -early_stop 1 -num_stop 15 
--out <where-predictions-to-save> -verbosity 0 -iter 40 
--method sgd -learn_rate 0.001 -init_stdev 0.0003
+-validation <path-to-validation-data> -dim '1,1,8' -early_stop 1 -num_stop 15 -optimize_metric auc 
+-pred_iter_step iter_step -out <where-predictions-to-save> -verbosity 0 -iter 40 
+-method sgd  -learn_rate 0.001 -init_stdev 0.0003
 ```
 
 
