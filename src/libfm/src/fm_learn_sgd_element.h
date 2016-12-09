@@ -84,7 +84,7 @@ class fm_learn_sgd_element: public fm_learn_sgd {
 // 					}
 // 				}
 
-        //show original auc, gradient was used for minizing (1.0-auc), that is maximizing auc.
+        //Early stop option for maximizing validation AUC (earlier was only minimizing validation log loss)
         if (early_stop){
           if(optimize_metric == "auc"){
             std::cout << "#Iter=" << std::setw(3) << i << "\tTrain=" << (1.0-metric_train) << "\tTest=" << (1.0-metric_test) << "\tValidation=" << (1.0-metric_validation) << "\tLearnRate=" <<   fm_learn_sgd::learn_rate << std::endl;
